@@ -1,183 +1,121 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>S3HoCKwave ESWL Failure Risk Calculator</title>
-  <meta name="description" content="One-click ESWL failure risk calculator based on the S3HoCKwave score." />
-  <style>
-    :root { --bg:#f7fafc; --card:#fff; --muted:#6b7280; --text:#111827; --accent:#2563eb; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, Noto Sans, 'Apple Color Emoji','Segoe UI Emoji'; background: var(--bg); color: var(--text);}
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    h1 { font-size: 28px; margin: 0 0 6px 0; }
-    .sub { color: var(--muted); margin: 0 0 18px 0; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    @media(min-width: 960px) { .grid{ grid-template-columns: 2fr 1fr; } }
-    .card { background: var(--card); border-radius: 16px; box-shadow: 0 6px 22px rgba(0,0,0,.06); padding: 18px; }
-    .section label { display:block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-    .btns { display:flex; flex-wrap: wrap; gap: 10px; }
-    button { border:1px solid #e5e7eb; padding:8px 12px; border-radius: 14px; background:#f3f4f6; cursor:pointer; }
-    button.active { background: var(--accent); color: #fff; border-color: var(--accent);}
-    .muted { color: var(--muted); font-size: 12px; }
-    .big { font-size: 36px; font-weight: 700; }
-    .bar-wrap { background:#e5e7eb; height: 10px; border-radius:999px; overflow:hidden; }
-    .bar { background: var(--accent); height: 10px; width:0; }
-    .footer { margin-top: 16px; color: var(--muted); font-size: 12px; }
-    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; margin-left:8px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>S3HoCKwave ESWL Failure Risk – Standalone</title>
+<style>
+  :root { --bg:#f7fafc; --card:#fff; --muted:#6b7280; --text:#111827; --accent:#2563eb; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--text);}
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 28px; margin: 0 0 6px 0; }
+  .sub { color: var(--muted); margin: 0 0 18px 0; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media(min-width: 960px) { .grid{ grid-template-columns: 2fr 1fr; } }
+  .card { background: var(--card); border-radius: 16px; box-shadow: 0 6px 22px rgba(0,0,0,.06); padding: 18px; }
+  label { display:block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .btns { display:flex; flex-wrap: wrap; gap: 10px; }
+  button { border:1px solid #e5e7eb; padding:8px 12px; border-radius: 14px; background:#f3f4f6; cursor:pointer; }
+  button.active { background: var(--accent); color: #fff; border-color: var(--accent);}
+  .muted { color: var(--muted); font-size: 12px; }
+  .big { font-size: 36px; font-weight: 700; }
+  .bar-wrap { background:#e5e7eb; height: 10px; border-radius:999px; overflow:hidden; }
+  .bar { background: var(--accent); height: 10px; width:0; }
+  .footer { margin-top: 16px; color: var(--muted); font-size: 12px; }
+  .pill { display:inline-block; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; margin-left:8px; }
+</style>
 </head>
 <body>
   <div class="container">
     <h1>S3HoCKwave – ESWL Failure Risk</h1>
-    <p class="sub">One‑click calculator based on Table 2 (points) and Figure S3 (probability mapping).</p>
-
+    <p class="sub">Standalone, offline HTML/JS calculator.</p>
     <div class="grid">
-      <div class="card">
-        <div id="app"></div>
-      </div>
-      <div class="card">
-        <div id="result"></div>
-      </div>
+      <div class="card" id="form"></div>
+      <div class="card" id="result"></div>
     </div>
     <div class="footer">
       Reference categories (0 points): Female, colic present, middle ureter, stone &lt;5&nbsp;mm, SSD &lt;120&nbsp;mm, HU &lt;500.
       <span class="pill">Anchors: 0→2%, 21→10%, 29→20%, 35→30%, 39→39%, 43→50%, 49→62%</span>
     </div>
   </div>
-
-  <!-- React UMD + Babel for tiny JSX (no build tools needed) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <script type="text/babel">
-    const anchorsScore = [0, 21, 29, 35, 39, 43, 49];
-    const anchorsProb  = [0.02, 0.1, 0.2, 0.3, 0.39, 0.5, 0.62];
-
-    function interpProbability(score){
-      if (score <= anchorsScore[0]) return anchorsProb[0];
-      if (score >= anchorsScore[anchorsScore.length-1]) return anchorsProb[anchorsProb.length-1];
-      for (let i=0; i<anchorsScore.length-1; i++){
-        const x0 = anchorsScore[i], x1 = anchorsScore[i+1];
-        if (score >= x0 && score <= x1){
-          const y0 = anchorsProb[i], y1 = anchorsProb[i+1];
-          const t = (score - x0) / (x1 - x0);
-          return y0 + t*(y1 - y0);
-        }
+<script>
+  const anchorsScore = [0, 21, 29, 35, 39, 43, 49];
+  const anchorsProb  = [0.02, 0.1, 0.2, 0.3, 0.39, 0.5, 0.62];
+  function interpProbability(score){
+    if (score <= anchorsScore[0]) return anchorsProb[0];
+    if (score >= anchorsScore[anchorsScore.length-1]) return anchorsProb[anchorsProb.length-1];
+    for (let i=0;i<anchorsScore.length-1;i++){
+      const x0=anchorsScore[i], x1=anchorsScore[i+1];
+      if (score>=x0 && score<=x1){
+        const y0=anchorsProb[i], y1=anchorsProb[i+1];
+        const t=(score-x0)/(x1-x0);
+        return y0 + t*(y1-y0);
       }
-      return 0;
     }
-
-    function Toggle({value, options, onChange}){
-      return (
-        <div className="btns">
-          {options.map(opt => (
-            <button key={opt.value}
-              className={value===opt.value? 'active' : ''}
-              onClick={()=>onChange(opt.value)}>{opt.label}</button>
-          ))}
-        </div>
-      );
-    }
-
-    function App(){
-      const [state, setState] = React.useState({sex:'female', colic:'present', location:'middle', size:'lt5', ssd:'lt120', hu:'lt500'});
-      const points = React.useMemo(()=>{
-        let p=0;
-        if (state.sex==='male') p+=3;
-        if (state.colic==='absent') p+=3;
-        if (state.location==='kidney') p+=6;
-        if (state.location==='upper') p+=2;
-        if (state.location==='lower') p+=9;
-        if (state.size==='5to10') p+=7;
-        if (state.size==='ge10') p+=16;
-        if (state.ssd==='ge120') p+=3;
-        if (state.hu==='500to1000') p+=11;
-        if (state.hu==='ge1000') p+=15;
-        return p;
-      }, [state]);
-      const prob = React.useMemo(()=>interpProbability(points), [points]);
-
-      const Section = ({label, children}) => (
-        <div className="section" style={{marginBottom:'12px'}}>
-          <label>{label}</label>
-          {children}
-        </div>
-      );
-
-      return (
-        <>
-          <Section label="Sex (ref: female)">
-            <Toggle value={state.sex} onChange={v=>setState({...state, sex:v})}
-              options={[
-                {{value:'female', label:'Female (0)'}},
-                {{value:'male', label:'Male (+3)'}},
-              ]}/>
-          </Section>
-
-          <Section label="Presence of colic (ref: present)">
-            <Toggle value={state.colic} onChange={v=>setState({...state, colic:v})}
-              options={[
-                {{value:'present', label:'Present (0)'}},
-                {{value:'absent', label:'Absent (+3)'}},
-              ]}/>
-          </Section>
-
-          <Section label="Localization (ref: middle ureter)">
-            <Toggle value={state.location} onChange={v=>setState({...state, location:v})}
-              options={[
-                {{value:'middle', label:'Middle ureter (0)'}},
-                {{value:'kidney', label:'Kidney (+6)'}},
-                {{value:'upper',  label:'Upper ureter (+2)'}},
-                {{value:'lower',  label:'Lower ureter (+9)'}},
-              ]}/>
-          </Section>
-
-          <Section label="Maximum stone length (ref: < 5 mm)">
-            <Toggle value={state.size} onChange={v=>setState({...state, size:v})}
-              options={[
-                {{value:'lt5',   label:'< 5 mm (0)'}},
-                {{value:'5to10', label:'5–10 mm (+7)'}},
-                {{value:'ge10',  label:'≥ 10 mm (+16)'}},
-              ]}/>
-          </Section>
-
-          <Section label="Skin‑to‑stone distance (SSD) (ref: < 120 mm)">
-            <Toggle value={state.ssd} onChange={v=>setState({...state, ssd:v})}
-              options={[
-                {{value:'lt120', label:'< 120 mm (0)'}},
-                {{value:'ge120', label:'≥ 120 mm (+3)'}},
-              ]}/>
-          </Section>
-
-          <Section label="Mean stone density (ref: < 500 HU)">
-            <Toggle value={state.hu} onChange={v=>setState({...state, hu:v})}
-              options={[
-                {{value:'lt500',      label:'< 500 HU (0)'}},
-                {{value:'500to1000',  label:'500–1000 HU (+11)'}},
-                {{value:'ge1000',     label:'≥ 1000 HU (+15)'}},
-              ]}/>
-          </Section>
-
-          <div className="section">
-            <button onClick={()=>setState({sex:'female', colic:'present', location:'middle', size:'lt5', ssd:'lt120', hu:'lt500'})}>Reset</button>
-            <span className="muted" style={{marginLeft:'10px'}}>Reference categories restore to 0 points.</span>
-          </div>
-
-          {/* Results */}
-          <div>
-            <div className="muted">S3HoCKwave total</div>
-            <div className="big">{points}</div>
-            <div className="muted" style={{marginTop:'10px'}}>Estimated probability of ESWL failure</div>
-            <div className="bar-wrap"><div className="bar" style={{width: Math.round(prob*1000)/10 + '%'}}></div></div>
-            <div className="big" style={{marginTop:'8px'}}>{(Math.round(prob*1000)/10)}%</div>
-          </div>
-        </>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
-  </script>
+    return 0;
+  }
+  const state = {sex:'female', colic:'present', location:'middle', size:'lt5', ssd:'lt120', hu:'lt500'};
+  const options = {
+    sex:[['female','Female (0)'],['male','Male (+3)']],
+    colic:[['present','Present (0)'],['absent','Absent (+3)']],
+    location:[['middle','Middle ureter (0)'],['kidney','Kidney (+6)'],['upper','Upper ureter (+2)'],['lower','Lower ureter (+9)']],
+    size:[['lt5','< 5 mm (0)'],['5to10','5–10 mm (+7)'],['ge10','≥ 10 mm (+16)']],
+    ssd:[['lt120','< 120 mm (0)'],['ge120','≥ 120 mm (+3)']],
+    hu:[['lt500','< 500 HU (0)'],['500to1000','500–1000 HU (+11)'],['ge1000','≥ 1000 HU (+15)']]
+  };
+  function computePoints(s){
+    let p=0;
+    if (s.sex==='male') p+=3;
+    if (s.colic==='absent') p+=3;
+    if (s.location==='kidney') p+=6;
+    if (s.location==='upper') p+=2;
+    if (s.location==='lower') p+=9;
+    if (s.size==='5to10') p+=7;
+    if (s.size==='ge10') p+=16;
+    if (s.ssd==='ge120') p+=3;
+    if (s.hu==='500to1000') p+=11;
+    if (s.hu==='ge1000') p+=15;
+    return p;
+  }
+  function section(key, label){
+    const wrap = document.createElement('div');
+    const lab = document.createElement('label'); lab.textContent = label; wrap.appendChild(lab);
+    const btns = document.createElement('div'); btns.className='btns';
+    options[key].forEach(([val,text])=>{
+      const b = document.createElement('button'); b.textContent = text;
+      if (state[key]===val) b.classList.add('active');
+      b.onclick = ()=>{ state[key]=val; render(); };
+      btns.appendChild(b);
+    });
+    wrap.appendChild(btns);
+    return wrap;
+  }
+  function render(){
+    const form = document.getElementById('form');
+    const result = document.getElementById('result');
+    form.replaceChildren(
+      section('sex','Sex (ref: female)'),
+      section('colic','Presence of colic (ref: present)'),
+      section('location','Localization (ref: middle ureter)'),
+      section('size','Maximum stone length (ref: < 5 mm)'),
+      section('ssd','Skin‑to‑stone distance (SSD) (ref: < 120 mm)'),
+      section('hu','Mean stone density (ref: < 500 HU)'),
+      (function(){ const div=document.createElement('div'); const btn=document.createElement('button'); btn.textContent='Reset'; btn.onclick=()=>{state.sex='female';state.colic='present';state.location='middle';state.size='lt5';state.ssd='lt120';state.hu='lt500';render();}; const span=document.createElement('span'); span.className='muted'; span.style.marginLeft='10px'; span.textContent='Reference categories restore to 0 points.'; div.append(btn, span); return div; })()
+    );
+    const points = computePoints(state);
+    const prob = interpProbability(points);
+    const pct = Math.round(prob*1000)/10;
+    const wrap = document.createElement('div');
+    const muted1 = document.createElement('div'); muted1.className='muted'; muted1.textContent='S3HoCKwave total';
+    const big1 = document.createElement('div'); big1.className='big'; big1.textContent=String(points);
+    const muted2 = document.createElement('div'); muted2.className='muted'; muted2.style.marginTop='10px'; muted2.textContent='Estimated probability of ESWL failure';
+    const barW = document.createElement('div'); barW.className='bar-wrap';
+    const bar = document.createElement('div'); bar.className='bar'; bar.style.width = pct+'%';
+    const big2 = document.createElement('div'); big2.className='big'; big2.style.marginTop='8px'; big2.textContent = pct+'%';
+    barW.appendChild(bar); wrap.append(muted1,big1,muted2,barW,big2);
+    result.replaceChildren(wrap);
+  }
+  render();
+</script>
 </body>
 </html>
